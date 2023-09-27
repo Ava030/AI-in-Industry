@@ -28,13 +28,18 @@ processes = [
 
 def fcfs(processes):
     time = 0
+    print("Starting FCFS...") # Debug statement
     for process in sorted(processes, key=lambda x: x.arrival_time):
+        print(f"Processing {process.name}") # Debug statement
         if time < process.arrival_time:
             time = process.arrival_time
         process.start_time = time
         time += process.burst_time
         process.finish_time = time
-    return compute_metrics(processes)
+    metrics = compute_metrics(processes)
+    print("FCFS finished:", metrics) # Debug statement
+    return metrics
+
 
 # SJF
 
@@ -50,12 +55,13 @@ def sjf(processes):
         if not available_processes:
             time += 1
             continue
-        process = available_processes[0]  # Shortest job
+        process = min(available_processes, key=lambda x: x.burst_time)  # Shortest job
         process.start_time = time
         time += process.burst_time
         process.finish_time = time
         sorted_processes.remove(process)
     return compute_metrics(processes)
+
 
 # PS
 
@@ -71,40 +77,54 @@ def ps(processes):
         if not available_processes:
             time += 1
             continue
-        process = available_processes[0]  # Highest priority job
+        process = min(available_processes, key=lambda x: x.priority)  # Highest priority job
         process.start_time = time
         time += process.burst_time
         process.finish_time = time
         sorted_processes.remove(process)
     return compute_metrics(processes)
 
+
 # RR
 
 
 def rr(processes, quantum):
     time = 0
-    queue = processes.copy()
-    while queue:
+    queue = []
+    
+    # Initializing the processes list sorted by arrival time
+    processes_by_arrival = sorted(processes, key=lambda x: x.arrival_time)
+    
+    while processes_by_arrival or queue:
+        # Move processes from processes_by_arrival to the queue if they've arrived
+        while processes_by_arrival and processes_by_arrival[0].arrival_time <= time:
+            queue.append(processes_by_arrival.pop(0))
+        
+        # If queue is empty, then increase the time and continue
+        if not queue:
+            time += 1
+            continue
+        
         process = queue.pop(0)
+        
         if process.start_time == -1:
             process.start_time = time
+        
+        # Execute the process
         if process.remaining_time > quantum:
             time += quantum
             process.remaining_time -= quantum
-            # Re-check the queue and append process back if it's not finished
-            for p in processes:
-                if p not in queue and p != process and p.arrival_time <= time:
-                    queue.append(p)
-            queue.append(process)
+            # After the quantum, only add the process back to the end of the queue if it's not finished
+            if process.remaining_time > 0:
+                queue.append(process)
         else:
             time += process.remaining_time
             process.finish_time = time
             process.remaining_time = 0
-            # Add processes that arrived while the current one was executing
-            for p in processes:
-                if p not in queue and p.arrival_time <= time:
-                    queue.append(p)
+
     return compute_metrics(processes)
+
+
 
 
 print("FCFS:", fcfs(processes))
